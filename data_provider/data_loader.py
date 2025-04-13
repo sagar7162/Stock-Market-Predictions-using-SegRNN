@@ -349,11 +349,15 @@ class Dataset_Pred(Dataset):
             data = df_data.values
 
         tmp_stamp = df_raw[['date']][border1:border2]
-        tmp_stamp['date'] = pd.to_datetime(tmp_stamp.date)
+        tmp_stamp['date'] = pd.to_datetime(tmp_stamp.date, format="%d-%m-%Y", dayfirst=True, errors='coerce')
         pred_dates = pd.date_range(tmp_stamp.date.values[-1], periods=self.pred_len + 1, freq=self.freq)
 
         df_stamp = pd.DataFrame(columns=['date'])
         df_stamp.date = list(tmp_stamp.date.values) + list(pred_dates[1:])
+        
+        # Store the original dates (including future predictions) for later use
+        self.future_dates = df_stamp.date.copy()
+        
         if self.timeenc == 0:
             df_stamp['month'] = df_stamp.date.apply(lambda row: row.month, 1)
             df_stamp['day'] = df_stamp.date.apply(lambda row: row.day, 1)
@@ -372,25 +376,29 @@ class Dataset_Pred(Dataset):
         else:
             self.data_y = data[border1:border2]
         self.data_stamp = data_stamp
+        self.df_stamp = df_stamp  # Store the full DataFrame with dates for later reference
 
     def __getitem__(self, index):
-        s_begin = index
-        s_end = s_begin + self.seq_len
+        # For prediction, we only need the last sequence from the data
+        # Ignore the index parameter since we always return the same last sequence
+        s_begin = 0  # Always use the first (and only) sequence
+        s_end = self.seq_len
         r_begin = s_end - self.label_len
         r_end = r_begin + self.label_len + self.pred_len
 
-        seq_x = self.data_x[s_begin:s_end]
+        seq_x = self.data_x[:self.seq_len]  # Last sequence_length items
         if self.inverse:
-            seq_y = self.data_x[r_begin:r_begin + self.label_len]
+            seq_y = self.data_x[:self.label_len]
         else:
-            seq_y = self.data_y[r_begin:r_begin + self.label_len]
-        seq_x_mark = self.data_stamp[s_begin:s_end]
+            seq_y = self.data_y[:self.label_len]
+        seq_x_mark = self.data_stamp[:self.seq_len]
         seq_y_mark = self.data_stamp[r_begin:r_end]
 
         return seq_x, seq_y, seq_x_mark, seq_y_mark
 
     def __len__(self):
-        return len(self.data_x) - self.seq_len + 1
-
-    def inverse_transform(self, data):
-        return self.scaler.inverse_transform(data)
+        # Original implementation is causing errors in the predict function
+        # return len(self.data_x) - self.seq_len + 1
+        
+        # Simply return 1 for prediction mode since we're only predicting one sequence
+        return 1

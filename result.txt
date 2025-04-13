@@ -1,3 +1,39 @@
 BPCL_720_96_SegRNN_custom_ftMS_sl720_pl96_dm512_dr0.5_rtrnn_dwpmf_sl48_mae_test_0  
 mse:0.29055267572402954, mae:0.3907284140586853, ms/sample:2.0253389271643343
 
+BPCL_720_96_SegRNN_custom_ftMS_sl720_pl96_dm512_dr0.5_rtrnn_dwpmf_sl48_mae_test_0  
+mse:0.29055267572402954, mae:0.3907284140586853, ms/sample:1.85323995586261
+
+BPCL_720_96_SegRNN_custom_ftMS_sl720_pl96_dm512_dr0.5_rtrnn_dwpmf_sl48_mae_test_0  
+mse:0.29055267572402954, mae:0.3907284140586853, ms/sample:1.8202515615933184
+
+BPCL_720_96_SegRNN_custom_ftMS_sl720_pl96_dm512_dr0.5_rtrnn_dwpmf_sl48_mae_test_0  
+mse:0.29055267572402954, mae:0.3907284140586853, ms/sample:2.122288905315518
+
+BPCL_720_96_SegRNN_custom_ftMS_sl720_pl96_dm512_dr0.5_rtrnn_dwpmf_sl48_mae_test_0  
+mse:0.29055267572402954, mae:0.3907284140586853, ms/sample:2.3082988355964362
+
+BPCL_720_96_SegRNN_custom_ftMS_sl720_pl96_dm512_dr0.5_rtrnn_dwpmf_sl48_mae_test_0  
+mse:0.29055267572402954, mae:0.3907284140586853, ms/sample:2.3951330540343103
+
+BPCL_720_96_SegRNN_custom_ftMS_sl720_pl96_dm512_dr0.5_rtrnn_dwpmf_sl48_mae_test_0  
+mse:0.29055267572402954, mae:0.3907284140586853, ms/sample:2.2734828123641555
+
+BPCL_720_96_SegRNN_custom_ftMS_sl720_pl96_dm512_dr0.5_rtrnn_dwpmf_sl48_mae_test_0  
+mse:0.29055267572402954, mae:0.3907284140586853, ms/sample:2.7084624545174356
+
+BPCL_720_96_SegRNN_custom_ftMS_sl720_pl96_dm512_dr0.5_rtrnn_dwpmf_sl48_mae_test_0  
+mse:0.29055267572402954, mae:0.3907284140586853, ms/sample:3.847009153346344
+
+BPCL_720_96_SegRNN_custom_ftMS_sl720_pl96_dm512_dr0.5_rtrnn_dwpmf_sl48_mae_test_0  
+mse:0.29055267572402954, mae:0.3907284140586853, ms/sample:3.3143830348739467
+
+BPCL_720_96_SegRNN_custom_ftMS_sl720_pl96_dm512_dr0.5_rtrnn_dwpmf_sl48_mae_test_0  
+mse:0.29055267572402954, mae:0.3907284140586853, ms/sample:3.4743735015268897
+
+AXISBANK_720_96_SegRNN_custom_ftMS_sl720_pl96_dm512_dr0.5_rtrnn_dwpmf_sl48_mae_test_0  
+mse:0.036931175738573074, mae:0.12261797487735748, ms/sample:4.881862527835443
+
+BPCL_720_96_SegRNN_custom_ftMS_sl720_pl96_dm512_dr0.5_rtrnn_dwpmf_sl48_mae_test_0  
+mse:0.29055267572402954, mae:0.3907284140586853, ms/sample:3.449758387500455
+

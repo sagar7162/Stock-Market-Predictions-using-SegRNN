@@ -27,6 +27,7 @@ for pred_len in 96
 do
     python -u run_longExp.py \
       --is_training 1 \
+      --do_predict \
       --root_path $root_path_name \
       --data_path $data_path_name \
       --model_id $model_id_name'_'$seq_len'_'$pred_len \
@@ -43,7 +44,7 @@ do
       --d_model 512 \
       --dropout 0.5 \
       --train_epochs 30 \
-      --patience 10 \
+      --patience 1 \
       --rnn_type $rnn_type \
       --dec_way pmf \
       --channel_id 1 \

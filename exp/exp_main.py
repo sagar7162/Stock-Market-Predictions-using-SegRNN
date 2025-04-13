@@ -12,10 +12,10 @@ from torch.optim import lr_scheduler
 
 import os
 import time
+import pandas as pd
 
 import warnings
 import matplotlib.pyplot as plt
-import numpy as np
 
 warnings.filterwarnings('ignore')
 
@@ -116,6 +116,7 @@ class Exp_Main(Exp_Basic):
         time_now = time.time()
 
         train_steps = len(train_loader)
+        print("train steps:", train_steps)
         early_stopping = EarlyStopping(patience=self.args.patience, verbose=True)
 
         model_optim = self._select_optimizer()
@@ -244,6 +245,31 @@ class Exp_Main(Exp_Basic):
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
 
+        # Extract date information from the dataset for visualization
+        dates = None
+        df_raw = None
+        try:
+            # Directly read the dates from the original CSV file
+            df_raw = pd.read_csv(os.path.join(self.args.root_path, self.args.data_path))
+            
+            # Get the date column from the original data
+            if 'date' in df_raw.columns:
+                # Calculate test start index based on the dataset split
+                num_train = int(len(df_raw) * 0.7)
+                num_test = int(len(df_raw) * 0.2)
+                test_start_idx = len(df_raw) - num_test
+                
+                # Get dates for test data - convert to list to avoid index issues
+                date_series = df_raw['date'].iloc[test_start_idx:].reset_index(drop=True)
+                dates = pd.to_datetime(date_series, format="%d-%m-%Y", errors='coerce')
+                print(f"Successfully extracted {len(dates)} dates for visualization")
+        except Exception as e:
+            print(f"Could not extract dates from original data: {e}")
+            dates = None
+
+        # Create a list to store prediction results with dates
+        prediction_results = []
+
         begin_time = time.time()
         self.model.eval()
         with torch.no_grad():
@@ -290,11 +316,61 @@ class Exp_Main(Exp_Basic):
                 preds.append(pred)
                 trues.append(true)
                 inputx.append(batch_x.detach().cpu().numpy())
+                
+                # Save prediction results with dates for each batch
                 if i % 20 == 0:
-                    input = batch_x.detach().cpu().numpy()
-                    gt = np.concatenate((input[0, :, -1], true[0, :, -1]), axis=0)
-                    pd = np.concatenate((input[0, :, -1], pred[0, :, -1]), axis=0)
-                    visual(gt, pd, os.path.join(folder_path, str(i) + '.pdf'))
+                    # Get the scaler for inverse transformation
+                    scaler = test_data.scaler if hasattr(test_data, 'scaler') else None
+                    
+                    # Only use the prediction part (not concatenating with input)
+                    gt = true[0, :, -1]  # Ground truth (prediction horizon only)
+                    pd_values = pred[0, :, -1]  # Predictions
+                    
+                    # Extract the corresponding dates for this batch
+                    batch_dates = None
+                    if dates is not None:
+                        try:
+                            # Calculate the proper dates for the prediction period only
+                            batch_start_idx = i * test_loader.batch_size + self.args.seq_len
+                            pred_end_idx = batch_start_idx + self.args.pred_len
+                            if batch_start_idx < len(dates):
+                                # Use only prediction period dates
+                                batch_dates = dates[batch_start_idx:pred_end_idx]
+                                
+                                # Get real values if scaler is available
+                                if scaler is not None:
+                                    try:
+                                        # Create properly shaped arrays for inverse transformation
+                                        num_features = scaler.mean_.shape[0]
+                                        target_feature_idx = -1
+                                        
+                                        # Handle true values
+                                        true_2d = np.zeros((len(gt), num_features))
+                                        true_2d[:, target_feature_idx] = gt
+                                        true_transformed = scaler.inverse_transform(true_2d)[:, target_feature_idx]
+                                        
+                                        # Handle predictions
+                                        preds_2d = np.zeros((len(pd_values), num_features))
+                                        preds_2d[:, target_feature_idx] = pd_values
+                                        preds_transformed = scaler.inverse_transform(preds_2d)[:, target_feature_idx]
+                                        
+                                        # Store the transformed values
+                                        batch_results = []
+                                        for j in range(len(batch_dates)):
+                                            if j < len(true_transformed) and j < len(preds_transformed):
+                                                batch_results.append({
+                                                    'Date': batch_dates.iloc[j] if hasattr(batch_dates, 'iloc') else batch_dates[j],
+                                                    'Actual': true_transformed[j],
+                                                    'Predicted': preds_transformed[j]
+                                                })
+                                        prediction_results.extend(batch_results)
+                                    except Exception as e:
+                                        print(f"Error transforming values: {e}")
+                        except Exception as e:
+                            print(f"Error extracting dates for batch {i}: {e}")
+                    
+                    visual(gt, pd_values, os.path.join(folder_path, str(i) + '.pdf'), 
+                           dates=batch_dates, scaler=scaler)
 
         ms = (time.time() - begin_time) * 1000 / len(test_data)
 
@@ -324,6 +400,13 @@ class Exp_Main(Exp_Basic):
         f.write('\n')
         f.write('\n')
         f.close()
+
+        # Save the prediction results to a CSV file
+        if prediction_results:
+            df_results = pd.DataFrame(prediction_results)
+            csv_path = os.path.join(folder_path, 'stock_predictions.csv')
+            df_results.to_csv(csv_path, index=False)
+            print(f"Saved stock price predictions to {csv_path}")
 
         # np.save(folder_path + 'metrics.npy', np.array([mae, mse, rmse, mape, mspe,rse, corr]))
         np.save(folder_path + 'pred.npy', preds)
@@ -370,6 +453,9 @@ class Exp_Main(Exp_Basic):
                             outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
                         else:
                             outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                            
+                f_dim = -1 if self.args.features == 'MS' else 0
+                outputs = outputs[:, -self.args.pred_len:, f_dim:]
                 pred = outputs.detach().cpu().numpy()  # .squeeze()
                 preds.append(pred)
 
@@ -381,6 +467,59 @@ class Exp_Main(Exp_Basic):
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
 
+        # Save as numpy array
         np.save(folder_path + 'real_prediction.npy', preds)
-
+        
+        # Also save predictions in CSV format with dates
+        try:
+            # Get the future dates from pred_data
+            if hasattr(pred_data, 'future_dates'):
+                # Extract the future dates (last pred_len entries)
+                future_dates = pred_data.future_dates[-self.args.pred_len:]
+                
+                # Get the predictions for the target feature
+                future_predictions = preds[0, :, -1]  # Using the last feature dimension (assumed to be the target)
+                
+                # Apply inverse transform to get real stock values
+                if hasattr(pred_data, 'scaler'):
+                    scaler = pred_data.scaler
+                    num_features = scaler.mean_.shape[0]
+                    target_feature_idx = -1
+                    
+                    # Create a properly shaped array for inverse transform
+                    preds_2d = np.zeros((len(future_predictions), num_features))
+                    preds_2d[:, target_feature_idx] = future_predictions
+                    
+                    # Apply inverse transform
+                    real_preds = scaler.inverse_transform(preds_2d)[:, target_feature_idx]
+                else:
+                    real_preds = future_predictions
+                    
+                # Create DataFrame and save to CSV
+                df_future = pd.DataFrame({
+                    'Date': future_dates,
+                    'Predicted': real_preds
+                })
+                
+                csv_path = os.path.join(folder_path, 'future_predictions.csv')
+                df_future.to_csv(csv_path, index=False)
+                print(f"Saved future predictions to {csv_path}")
+                
+                # Create visualization of future predictions
+                plt.figure(figsize=(10, 6))
+                plt.plot(df_future['Date'], df_future['Predicted'], label='Future Prediction', linewidth=2)
+                plt.title('Stock Price Forecast')
+                plt.xlabel('Date')
+                plt.ylabel('Stock Price')
+                plt.legend()
+                plt.gcf().autofmt_xdate()
+                plt.tight_layout()
+                plt.savefig(os.path.join(folder_path, 'future_prediction_plot.pdf'), bbox_inches='tight')
+                plt.close()
+                print(f"Saved future prediction plot to {folder_path + 'future_prediction_plot.pdf'}")
+            else:
+                print("Warning: Could not find future_dates in pred_data")
+        except Exception as e:
+            print(f"Error creating future predictions CSV: {e}")
+            
         return
