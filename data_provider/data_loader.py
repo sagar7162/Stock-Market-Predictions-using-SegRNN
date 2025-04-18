@@ -223,14 +223,43 @@ class Dataset_Custom(Dataset):
         df_raw = pd.read_csv(os.path.join(self.root_path,
                                           self.data_path))
 
-        '''
-        df_raw.columns: ['date', ...(other features), target feature]
-        '''
-        cols = list(df_raw.columns)
-        cols.remove(self.target)
-        cols.remove('date')
-        df_raw = df_raw[['date'] + cols + [self.target]]
-        # print(cols)
+        # Apply preprocessing: Rename 'Date' column to 'date' if needed
+        if 'Date' in df_raw.columns and 'date' not in df_raw.columns:
+            df_raw.rename(columns={'Date': 'date'}, inplace=True)
+            
+        # For stock data, check if this is a stock dataset
+        stock_columns = ['Prev Close', 'Open', 'High', 'Low', 'Close']
+        is_stock_data = all(col in df_raw.columns for col in stock_columns)
+        
+        # Print debugging info
+        # print(f"Detected columns: {list(df_raw.columns)}")
+        # print(f"Is stock data: {is_stock_data}")
+        
+        if is_stock_data:
+            # Very specific handling for stock data - only keep these exact columns
+            stock_input_columns = ['Prev Close', 'Open', 'High', 'Low']
+            
+            # Ensure target is properly set
+            if self.target not in df_raw.columns or self.target == 'OT':
+                self.target = 'Close'
+                
+            # Keep only date, the 4 input columns, and target
+            keep_columns = ['date'] + stock_input_columns + [self.target]
+            # print(f"Keeping only these columns: {keep_columns}")
+            df_raw = df_raw[keep_columns]
+        else:
+            # Original handling for non-stock data
+            cols = list(df_raw.columns)
+            if self.target in cols:
+                cols.remove(self.target)
+            if 'date' in cols:
+                cols.remove('date')
+            df_raw = df_raw[['date'] + cols + [self.target]]
+            
+        # Print columns after filtering
+        # print(f"Final columns: {list(df_raw.columns)}")
+        
+        # Continue with the rest of the code
         num_train = int(len(df_raw) * 0.7)
         num_test = int(len(df_raw) * 0.2)
         num_vali = len(df_raw) - num_train - num_test
@@ -248,11 +277,12 @@ class Dataset_Custom(Dataset):
         if self.scale:
             train_data = df_data[border1s[0]:border2s[0]]
             self.scaler.fit(train_data.values)
-            # print(self.scaler.mean_)
-            # exit()
             data = self.scaler.transform(df_data.values)
         else:
             data = df_data.values
+            
+        # Print shape of data after processing
+        # print(f"Data shape after processing: {data.shape}")
 
         df_stamp = df_raw[['date']][border1:border2]
         df_stamp['date'] = pd.to_datetime(df_stamp.date, format="%d-%m-%Y", dayfirst=True, errors='coerce')
@@ -322,17 +352,54 @@ class Dataset_Pred(Dataset):
         self.scaler = StandardScaler()
         df_raw = pd.read_csv(os.path.join(self.root_path,
                                           self.data_path))
-        '''
-        df_raw.columns: ['date', ...(other features), target feature]
-        '''
+                                          
+        # Apply preprocessing: Rename 'Date' column to 'date' if needed
+        if 'Date' in df_raw.columns and 'date' not in df_raw.columns:
+            df_raw.rename(columns={'Date': 'date'}, inplace=True)
+            
+        # For stock data, identify if we have the essential stock columns
+        # More flexible check to detect stock data format
+        essential_stock_columns = ['Prev Close', 'Open', 'High', 'Low', 'Close']
+        is_stock_data = all(col in df_raw.columns for col in essential_stock_columns)
+        
+        # print(f"[Pred] Detected columns: {list(df_raw.columns)}")
+        # print(f"[Pred] Is stock data: {is_stock_data}")
+        
+        if is_stock_data and not self.cols:
+            # Specific handling for stock data
+            input_columns = ['Prev Close', 'Open', 'High', 'Low']
+            
+            # Ensure target is properly set for stock data
+            if self.target not in df_raw.columns or self.target == 'OT':
+                self.target = 'Close'  # Default target for stock data
+                
+            # Set cols for stock data
+            self.cols = input_columns.copy()
+            if self.target not in self.cols:
+                self.cols.append(self.target)
+                
+            # Keep only date, the 4 input columns, and target
+            keep_columns = ['date'] + input_columns + [self.target]
+            # print(f"[Pred] Keeping only these columns: {keep_columns}")
+            df_raw = df_raw[keep_columns]
+        
+        # Original handling when cols are provided or for non-stock data
         if self.cols:
             cols = self.cols.copy()
-            cols.remove(self.target)
+            if self.target in cols:
+                cols.remove(self.target)
         else:
             cols = list(df_raw.columns)
-            cols.remove(self.target)
-            cols.remove('date')
+            if self.target in cols:
+                cols.remove(self.target)
+            if 'date' in cols:
+                cols.remove('date')
+                
+        # Ensure proper column order
         df_raw = df_raw[['date'] + cols + [self.target]]
+        # print(f"[Pred] Final columns: {list(df_raw.columns)}")
+        
+        # Calculate prediction boundaries
         border1 = len(df_raw) - self.seq_len
         border2 = len(df_raw)
 
@@ -347,26 +414,72 @@ class Dataset_Pred(Dataset):
             data = self.scaler.transform(df_data.values)
         else:
             data = df_data.values
-
+            
+        # Print shape of data after processing
+        # print(f"[Pred] Data shape after processing: {data.shape}")
+        
+        # More robust date parsing
         tmp_stamp = df_raw[['date']][border1:border2]
-        tmp_stamp['date'] = pd.to_datetime(tmp_stamp.date, format="%d-%m-%Y", dayfirst=True, errors='coerce')
-        pred_dates = pd.date_range(tmp_stamp.date.values[-1], periods=self.pred_len + 1, freq=self.freq)
+        
+        # Print sample dates to help diagnose parsing issues
+        sample_dates = tmp_stamp['date'].iloc[:5].tolist()
+        # print(f"[Pred] Sample date strings: {sample_dates}")
+        
+        # Try different date formats in order of likelihood
+        date_formats = [
+            "%d-%m-%Y",   # 31-12-2020
+            "%Y-%m-%d",   # 2020-12-31
+            "%m/%d/%Y",   # 12/31/2020
+            "%d/%m/%Y",   # 31/12/2020
+            "%Y/%m/%d"    # 2020/12/31
+        ]
+        
+        # Try each format until one works
+        for date_format in date_formats:
+            try:
+                # print(f"[Pred] Trying date format: {date_format}")
+                tmp_stamp['date'] = pd.to_datetime(tmp_stamp['date'], format=date_format, errors='raise')
+                # print(f"[Pred] Date format {date_format} worked!")
+                break
+            except ValueError:
+                continue
+        
+        # If none of the specific formats worked, try with errors='coerce' as fallback
+        if pd.isna(tmp_stamp['date']).all():
+            # print("[Pred] All specific formats failed, using pandas default parser with coerce")
+            tmp_stamp['date'] = pd.to_datetime(tmp_stamp['date'], errors='coerce')
+        
+        # Check if we have valid dates to work with
+        valid_dates = tmp_stamp['date'].dropna()
+        if len(valid_dates) == 0:
+            # print("[Pred] WARNING: Could not parse any dates! Using current date as fallback")
+            last_date = pd.Timestamp.now()
+        else:
+            # Use the last valid date
+            last_date = valid_dates.iloc[-1]
+            # print(f"[Pred] Using last valid date: {last_date}")
+            
+        # Generate prediction dates
+        pred_dates = pd.date_range(start=last_date, periods=self.pred_len + 1, freq=self.freq)
+        # print(f"[Pred] Generated {len(pred_dates)} future dates starting from {pred_dates[0]}")
 
         df_stamp = pd.DataFrame(columns=['date'])
-        df_stamp.date = list(tmp_stamp.date.values) + list(pred_dates[1:])
+        df_stamp.date = list(tmp_stamp['date'].values) + list(pred_dates[1:])
         
         # Store the original dates (including future predictions) for later use
         self.future_dates = df_stamp.date.copy()
         
         if self.timeenc == 0:
-            df_stamp['month'] = df_stamp.date.apply(lambda row: row.month, 1)
-            df_stamp['day'] = df_stamp.date.apply(lambda row: row.day, 1)
-            df_stamp['weekday'] = df_stamp.date.apply(lambda row: row.weekday(), 1)
-            df_stamp['hour'] = df_stamp.date.apply(lambda row: row.hour, 1)
-            df_stamp['minute'] = df_stamp.date.apply(lambda row: row.minute, 1)
+            df_stamp['month'] = df_stamp.date.apply(lambda row: row.month if pd.notnull(row) else 1, 1)
+            df_stamp['day'] = df_stamp.date.apply(lambda row: row.day if pd.notnull(row) else 1, 1)
+            df_stamp['weekday'] = df_stamp.date.apply(lambda row: row.weekday() if pd.notnull(row) else 0, 1)
+            df_stamp['hour'] = df_stamp.date.apply(lambda row: row.hour if pd.notnull(row) else 0, 1)
+            df_stamp['minute'] = df_stamp.date.apply(lambda row: row.minute if pd.notnull(row) else 0, 1)
             df_stamp['minute'] = df_stamp.minute.map(lambda x: x // 15)
             data_stamp = df_stamp.drop(['date'], 1).values
         elif self.timeenc == 1:
+            # Fill NaT values with the last valid date to avoid errors in time_features
+            df_stamp['date'] = df_stamp['date'].fillna(method='ffill')
             data_stamp = time_features(pd.to_datetime(df_stamp['date'].values), freq=self.freq)
             data_stamp = data_stamp.transpose(1, 0)
 

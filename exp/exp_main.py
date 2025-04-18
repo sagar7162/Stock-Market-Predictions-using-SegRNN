@@ -261,8 +261,9 @@ class Exp_Main(Exp_Basic):
                 
                 # Get dates for test data - convert to list to avoid index issues
                 date_series = df_raw['date'].iloc[test_start_idx:].reset_index(drop=True)
-                dates = pd.to_datetime(date_series, format="%d-%m-%Y", errors='coerce')
+                dates = pd.to_datetime(date_series, errors='coerce')
                 print(f"Successfully extracted {len(dates)} dates for visualization")
+                print(f"Date range: {dates.min()} to {dates.max()}, NaT count: {dates.isna().sum()}")
         except Exception as e:
             print(f"Could not extract dates from original data: {e}")
             dates = None
@@ -318,7 +319,8 @@ class Exp_Main(Exp_Basic):
                 inputx.append(batch_x.detach().cpu().numpy())
                 
                 # Save prediction results with dates for each batch
-                if i % 20 == 0:
+                # Process all batches, not just every 20th one
+                if True:  # Changed from: if i % 20 == 0:
                     # Get the scaler for inverse transformation
                     scaler = test_data.scaler if hasattr(test_data, 'scaler') else None
                     
@@ -364,11 +366,14 @@ class Exp_Main(Exp_Basic):
                                                     'Predicted': preds_transformed[j]
                                                 })
                                         prediction_results.extend(batch_results)
+                                        if i == 0:
+                                            print(f"Added {len(batch_results)} prediction results from batch {i}")
                                     except Exception as e:
-                                        print(f"Error transforming values: {e}")
+                                        print(f"Error transforming values in batch {i}: {e}")
                         except Exception as e:
                             print(f"Error extracting dates for batch {i}: {e}")
                     
+                    # Continue with visualization even if there are date issues
                     visual(gt, pd_values, os.path.join(folder_path, str(i) + '.pdf'), 
                            dates=batch_dates, scaler=scaler)
 
@@ -411,12 +416,60 @@ class Exp_Main(Exp_Basic):
                 metrics_array.append(float(m))
 
         # Save the prediction results to a CSV file
+        print(f"Collected {len(prediction_results)} prediction results")
+        
+        # If we don't have any prediction results, create some from preds and trues
+        if not prediction_results and len(preds) > 0:
+            print("No prediction results collected during testing. Creating fallback predictions.")
+            try:
+                # Create predictions from raw values
+                scaler = test_data.scaler if hasattr(test_data, 'scaler') else None
+                
+                # Get the target index
+                f_dim = -1 if self.args.features == 'MS' else 0
+                
+                # Generate some basic predictions
+                fallback_results = []
+                for i in range(min(len(preds), 100)):  # Limit to 100 entries
+                    pred_val = preds[i, 0, f_dim]
+                    true_val = trues[i, 0, f_dim]
+                    
+                    # Transform if scaler is available
+                    if scaler:
+                        num_features = scaler.mean_.shape[0]
+                        pred_2d = np.zeros((1, num_features))
+                        true_2d = np.zeros((1, num_features))
+                        pred_2d[0, f_dim] = pred_val
+                        true_2d[0, f_dim] = true_val
+                        
+                        pred_val = scaler.inverse_transform(pred_2d)[0, f_dim]
+                        true_val = scaler.inverse_transform(true_2d)[0, f_dim]
+                    
+                    fallback_results.append({
+                        'Date': pd.Timestamp.now() + pd.Timedelta(days=i),  # Placeholder dates
+                        'Actual': float(true_val),
+                        'Predicted': float(pred_val)
+                    })
+                
+                prediction_results = fallback_results
+                print(f"Created {len(fallback_results)} fallback prediction results")
+            except Exception as e:
+                print(f"Failed to create fallback prediction results: {e}")
+        
         if prediction_results:
             # Fix for all entries in the prediction_results list
             if hasattr(test_data, 'scaler'):
                 # First pass: Get original values from raw data
                 for result in prediction_results:
-                    date_str = result['Date'].strftime("%d-%m-%Y") if hasattr(result['Date'], 'strftime') else result['Date']
+                    # Safe handling of date conversion to prevent NaT errors
+                    if pd.isna(result['Date']):
+                        date_str = "NaT"  # Use a placeholder for NaT values
+                    else:
+                        try:
+                            date_str = result['Date'].strftime("%d-%m-%Y") if hasattr(result['Date'], 'strftime') else str(result['Date'])
+                        except:
+                            date_str = str(result['Date'])
+                        
                     if df_raw is not None and 'date' in df_raw.columns:
                         original_row = df_raw[df_raw['date'] == date_str]
                         if not original_row.empty and 'Close' in original_row.columns:
@@ -447,6 +500,8 @@ class Exp_Main(Exp_Basic):
             csv_path = os.path.join(folder_path, 'stock_predictions.csv')
             df_results.to_csv(csv_path, index=False)
             print(f"Saved stock price predictions to {csv_path}")
+        else:
+            print("Warning: No prediction results available to save to CSV")
 
         np.save(folder_path + 'metrics.npy', np.array(metrics_array))
         np.save(folder_path + 'pred.npy', preds)
