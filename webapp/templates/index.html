@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stock Price Forecasting</title>
+    <!-- Bootstrap CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <!-- Plotly.js -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+      body {
+        padding-top: 20px;
+        background-color: #f5f5f5;
+      }
+      .card {
+        margin-bottom: 20px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      }
+      .card-header {
+        background-color: #007bff;
+        color: white;
+        font-weight: bold;
+      }
+      .btn-primary {
+        background-color: #007bff;
+      }
+      .loading {
+        display: none;
+        text-align: center;
+        padding: 20px;
+      }
+      .loading-spinner {
+        width: 3rem;
+        height: 3rem;
+      }
+      #notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 1000;
+        display: none;
+      }
+      .stats-card {
+        text-align: center;
+        padding: 15px;
+      }
+      .stats-value {
+        font-size: 24px;
+        font-weight: bold;
+      }
+      .stats-label {
+        color: #6c757d;
+      }
+      .navbar-brand {
+        font-weight: bold;
+        font-size: 1.5rem;
+      }
+      .model-status {
+        padding: 10px;
+        border-radius: 5px;
+        margin-top: 10px;
+        display: none;
+      }
+      .model-status.trained {
+        background-color: #d4edda;
+        color: #155724;
+      }
+      .model-status.not-trained {
+        background-color: #f8d7da;
+        color: #721c24;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+      <div class="container">
+        <a class="navbar-brand" href="#">Stock Price Forecasting Dashboard</a>
+      </div>
+    </nav>
+
+    <div class="container">
+      <div class="alert alert-primary" role="alert">
+        <h4 class="alert-heading">Stock Price Forecasting with SegRNN</h4>
+        <p>
+          First select a stock and train the model, then you can select specific
+          dates to view predictions.
+        </p>
+      </div>
+
+      <!-- Notification -->
+      <div
+        id="notification"
+        class="toast align-items-center text-white bg-primary border-0"
+        role="alert"
+        aria-live="assertive"
+        aria-atomic="true"
+      >
+        <div class="d-flex">
+          <div class="toast-body" id="notification-message">
+            Notification message here.
+          </div>
+          <button
+            type="button"
+            class="btn-close btn-close-white me-2 m-auto"
+            data-bs-dismiss="toast"
+            aria-label="Close"
+          ></button>
+        </div>
+      </div>
+
+      <!-- Selection Panel -->
+      <div class="row mb-4">
+        <div class="col-md-12">
+          <div class="card">
+            <div class="card-header">Stock Selection & Training</div>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="form-group mb-3">
+                    <label for="stockSelect" class="form-label"
+                      >Select Stock:</label
+                    >
+                    <select class="form-select" id="stockSelect">
+                      {% for stock in stocks %}
+                      <option value="{{ stock }}">{{ stock }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                </div>
+                <div class="col-md-6 d-flex align-items-end">
+                  <button class="btn btn-success me-2" id="trainModelBtn">
+                    Train Model
+                  </button>
+                  <div id="modelStatus" class="model-status not-trained">
+                    Model not trained yet
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Prediction Panel -->
+      <div class="row mb-4">
+        <div class="col-md-12">
+          <div class="card">
+            <div class="card-header">Prediction Selection</div>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="form-group mb-3">
+                    <label for="predictionDate" class="form-label"
+                      >Target Date for Prediction:</label
+                    >
+                    <input
+                      type="date"
+                      class="form-control"
+                      id="predictionDate"
+                    />
+                    <small class="form-text text-muted"
+                      >Select a date from the prediction results</small
+                    >
+                  </div>
+                </div>
+                <div class="col-md-6 d-flex align-items-end">
+                  <button
+                    class="btn btn-primary w-100"
+                    id="makePredictionBtn"
+                    disabled
+                  >
+                    Show Prediction
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats Cards -->
+      <div class="row mb-4">
+        <!-- Remove the Predicted Price tile as requested -->
+      </div>
+
+      <!-- Chart Panels -->
+      <div class="row">
+        <!-- Historical Data Chart -->
+        <div class="col-md-6">
+          <div class="card">
+            <div class="card-header">Historical Stock Price</div>
+            <div class="card-body">
+              <div id="historicalChartLoading" class="loading">
+                <div
+                  class="spinner-border loading-spinner text-primary"
+                  role="status"
+                >
+                  <span class="visually-hidden">Loading...</span>
+                </div>
+                <div>Loading historical data...</div>
+              </div>
+              <div id="historicalChart" style="height: 400px"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Prediction Chart -->
+        <div class="col-md-6">
+          <div class="card">
+            <div class="card-header">Price Prediction with SegRNN</div>
+            <div class="card-body">
+              <div id="predictionChartLoading" class="loading">
+                <div
+                  class="spinner-border loading-spinner text-primary"
+                  role="status"
+                >
+                  <span class="visually-hidden">Loading...</span>
+                </div>
+                <div>Loading predictions...</div>
+              </div>
+              <div id="predictionChart" style="height: 400px"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <footer class="mt-5 mb-3 text-muted text-center">
+        <p>&copy; 2025 Stock Price Forecasting with SegRNN</p>
+      </footer>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Custom JS -->
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        // Elements
+        const stockSelect = document.getElementById("stockSelect");
+        const predictionDate = document.getElementById("predictionDate");
+        const trainModelBtn = document.getElementById("trainModelBtn");
+        const makePredictionBtn = document.getElementById("makePredictionBtn");
+        const modelStatus = document.getElementById("modelStatus");
+        const historicalChart = document.getElementById("historicalChart");
+        const predictionChart = document.getElementById("predictionChart");
+        const historicalChartLoading = document.getElementById(
+          "historicalChartLoading"
+        );
+        const predictionChartLoading = document.getElementById(
+          "predictionChartLoading"
+        );
+        // Remove references to elements that no longer exist
+        const notification = document.getElementById("notification");
+        const notificationMessage = document.getElementById(
+          "notification-message"
+        );
+
+        // Object to track trained models
+        const trainedModels = {};
+
+        // Toast functionality
+        function showNotification(message, type = "primary") {
+          notification.classList.remove(
+            "bg-primary",
+            "bg-success",
+            "bg-danger"
+          );
+          notification.classList.add(`bg-${type}`);
+          notificationMessage.textContent = message;
+          notification.style.display = "block";
+
+          setTimeout(() => {
+            notification.style.display = "none";
+          }, 5000);
+        }
+
+        // Load stock data
+        function loadStockData() {
+          const stock = stockSelect.value;
+          historicalChartLoading.style.display = "block";
+
+          fetch(`/stock_data?stock=${stock}`)
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.error) {
+                showNotification(
+                  `Error loading stock data: ${data.error}`,
+                  "danger"
+                );
+                return;
+              }
+
+              const chartData = JSON.parse(data.graph);
+              Plotly.newPlot(
+                "historicalChart",
+                chartData.data,
+                chartData.layout
+              );
+
+              // Update prediction date min/max based on available data
+              if (
+                data.date_range &&
+                data.date_range.start &&
+                data.date_range.end
+              ) {
+                const startDate = new Date(data.date_range.start);
+                const endDate = new Date(data.date_range.end);
+
+                // Set the min date to 30 days after start (to account for training data needs)
+                const minDate = new Date(startDate);
+                minDate.setDate(minDate.getDate() + 30);
+
+                predictionDate.min = minDate.toISOString().split("T")[0];
+                predictionDate.max = endDate.toISOString().split("T")[0];
+
+                // Set default to something in the middle of the range
+                const defaultDate = new Date(endDate);
+                defaultDate.setDate(
+                  defaultDate.getDate() -
+                    Math.floor((endDate - minDate) / 2 / (1000 * 60 * 60 * 24))
+                );
+                predictionDate.value = defaultDate.toISOString().split("T")[0];
+              }
+            })
+            .catch((error) => {
+              console.error("Error loading stock data:", error);
+              showNotification("Failed to load stock data", "danger");
+            })
+            .finally(() => {
+              historicalChartLoading.style.display = "none";
+            });
+        }
+
+        // Train model
+        function trainModel() {
+          const stock = stockSelect.value;
+          modelStatus.style.display = "block";
+          modelStatus.className = "model-status";
+          modelStatus.textContent = "Training in progress...";
+          modelStatus.style.backgroundColor = "#fff3cd";
+          modelStatus.style.color = "#856404";
+
+          makePredictionBtn.disabled = true;
+          trainModelBtn.disabled = true;
+
+          showNotification(
+            `Training model for ${stock}... This may take a few minutes.`
+          );
+
+          fetch("/train_model", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              stock: stock,
+            }),
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.status === "error") {
+                showNotification(
+                  `Error training model: ${data.message}`,
+                  "danger"
+                );
+                modelStatus.className = "model-status not-trained";
+                modelStatus.textContent = "Model training failed";
+                return;
+              }
+
+              showNotification("Model trained successfully!", "success");
+              trainedModels[stock] = true;
+              modelStatus.className = "model-status trained";
+              modelStatus.textContent = "Model trained and ready";
+              makePredictionBtn.disabled = false;
+            })
+            .catch((error) => {
+              console.error("Error training model:", error);
+              showNotification("Failed to train model", "danger");
+              modelStatus.className = "model-status not-trained";
+              modelStatus.textContent = "Model training failed";
+            })
+            .finally(() => {
+              trainModelBtn.disabled = false;
+            });
+        }
+
+        // Make prediction
+        function makePrediction() {
+          const stock = stockSelect.value;
+          const date = predictionDate.value;
+          predictionChartLoading.style.display = "block";
+          predictionChart.innerHTML = "";
+          makePredictionBtn.disabled = true;
+
+          showNotification(
+            `Generating predictions around ${date}... This may take a moment.`
+          );
+
+          fetch("/make_prediction", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              stock: stock,
+              date: date,
+            }),
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.status === "error") {
+                showNotification(
+                  `Error making prediction: ${data.message}`,
+                  "danger"
+                );
+                predictionChart.innerHTML = `<div class="text-center mt-5">${data.message}</div>`;
+                return;
+              }
+
+              showNotification("Prediction generated successfully!", "success");
+
+              // Load the prediction chart
+              const chartData = JSON.parse(data.graph);
+              Plotly.newPlot(
+                "predictionChart",
+                chartData.data,
+                chartData.layout
+              );
+
+              // Show first predicted value
+              if (chartData.data && chartData.data.length > 0) {
+                // For charts with both Actual and Predicted
+                if (
+                  chartData.data.length > 1 &&
+                  chartData.data[1] &&
+                  chartData.data[1].y
+                ) {
+                  // Restrict predictionDate to available dates in the prediction CSV
+                  const availableDates = chartData.data[1].x;
+                  predictionDate.min = availableDates[0];
+                  predictionDate.max =
+                    availableDates[availableDates.length - 1];
+                }
+                // For charts with only Predicted
+                else if (chartData.data[0] && chartData.data[0].y) {
+                  // Restrict predictionDate to available dates in the prediction CSV
+                  const availableDates = chartData.data[0].x;
+                  predictionDate.min = availableDates[0];
+                  predictionDate.max =
+                    availableDates[availableDates.length - 1];
+                }
+              }
+            })
+            .catch((error) => {
+              console.error("Error making prediction:", error);
+              showNotification("Failed to make prediction", "danger");
+              predictionChart.innerHTML =
+                '<div class="text-center mt-5">Error generating predictions.</div>';
+            })
+            .finally(() => {
+              predictionChartLoading.style.display = "none";
+              makePredictionBtn.disabled = false;
+            });
+        }
+
+        // Check model status
+        function checkModelStatus() {
+          const stock = stockSelect.value;
+
+          // If we already know it's trained, update UI
+          if (trainedModels[stock]) {
+            modelStatus.style.display = "block";
+            modelStatus.className = "model-status trained";
+            modelStatus.textContent = "Model trained and ready";
+            makePredictionBtn.disabled = false;
+            return;
+          }
+
+          // Otherwise reset UI
+          modelStatus.style.display = "block";
+          modelStatus.className = "model-status not-trained";
+          modelStatus.textContent = "Model not trained yet";
+          makePredictionBtn.disabled = true;
+        }
+
+        // Event listeners
+        stockSelect.addEventListener("change", () => {
+          loadStockData();
+          checkModelStatus();
+          predictionChart.innerHTML =
+            '<div class="text-center mt-5">Select a date and click "Make Prediction" to generate predictions.</div>';
+        });
+
+        trainModelBtn.addEventListener("click", trainModel);
+        makePredictionBtn.addEventListener("click", makePrediction);
+
+        // Initial load
+        loadStockData();
+        checkModelStatus();
+        predictionChart.innerHTML =
+          '<div class="text-center mt-5">Train the model first, then select a date to make predictions.</div>';
+      });
+    </script>
+  </body>
+</html>
