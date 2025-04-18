@@ -6,18 +6,19 @@ train 2899
 val 436
 test 966
 train steps: 11
-Epoch: 1 cost time: 13.58293867111206
+Epoch: 1 cost time: 12.874820470809937
 Epoch: 1, Steps: 11 | Train Loss: 0.4648809 Vali Loss: 0.6440545 Test Loss: 0.3852040
 Validation loss decreased (inf --> 0.644055).  Saving model ...
 Updating learning rate to 0.001
-Epoch: 2 cost time: 14.167110681533813
+Epoch: 2 cost time: 14.251026153564453
 Epoch: 2, Steps: 11 | Train Loss: 0.5001060 Vali Loss: 0.6591261 Test Loss: 0.4066329
 EarlyStopping counter: 1 out of 1
 Early stopping
 >>>>>>>testing : BPCL_720_96_SegRNN_custom_ftMS_sl720_pl96_dm512_dr0.5_rtrnn_dwpmf_sl48_mae_test_0<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 test 966
 Successfully extracted 1061 dates for visualization
-mse:0.29055267572402954, mae:0.3907284140586853, ms/sample:3.449758387500455
+mse:0.29055267572402954, mae:0.3907284140586853, ms/sample:4.788958508035411
+Global scaling factor: 0.6726
 Saved stock price predictions to ./results/BPCL_720_96_SegRNN_custom_ftMS_sl720_pl96_dm512_dr0.5_rtrnn_dwpmf_sl48_mae_test_0/stock_predictions.csv
 >>>>>>>predicting : BPCL_720_96_SegRNN_custom_ftMS_sl720_pl96_dm512_dr0.5_rtrnn_dwpmf_sl48_mae_test_0<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 pred 1

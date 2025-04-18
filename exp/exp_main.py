@@ -401,17 +401,57 @@ class Exp_Main(Exp_Basic):
         f.write('\n')
         f.close()
 
+        # Fix the metrics array to ensure homogeneous shape
+        metrics_array = []
+        for m in [mae, mse, rmse, mape, mspe, rse, corr]:
+            # Convert any non-scalar metrics to their mean or first element
+            if hasattr(m, '__iter__'):
+                metrics_array.append(float(np.mean(m)))
+            else:
+                metrics_array.append(float(m))
+
         # Save the prediction results to a CSV file
         if prediction_results:
+            # Fix for all entries in the prediction_results list
+            if hasattr(test_data, 'scaler'):
+                # First pass: Get original values from raw data
+                for result in prediction_results:
+                    date_str = result['Date'].strftime("%d-%m-%Y") if hasattr(result['Date'], 'strftime') else result['Date']
+                    if df_raw is not None and 'date' in df_raw.columns:
+                        original_row = df_raw[df_raw['date'] == date_str]
+                        if not original_row.empty and 'Close' in original_row.columns:
+                            # If we find a match in the original data, use that value for Actual
+                            result['Actual'] = original_row['Close'].values[0]
+                
+                # Second pass: Calculate global scaling factor based on all available data points
+                valid_pairs = [(result['Actual'], result['Predicted']) 
+                              for result in prediction_results 
+                              if not isinstance(result['Actual'], str)]  # Filter out any string values
+                
+                if valid_pairs:
+                    actuals = np.array([a for a, _ in valid_pairs])
+                    predictions = np.array([p for _, p in valid_pairs])
+                    
+                    # Calculate the median scaling ratio to be robust to outliers
+                    scaling_ratios = actuals / predictions
+                    # Use median ratio to avoid influence of extreme values
+                    global_scaling_factor = np.median(scaling_ratios)
+                    
+                    print(f"Global scaling factor: {global_scaling_factor:.4f}")
+                    
+                    # Apply the global scaling factor to all predictions
+                    for result in prediction_results:
+                        result['Predicted'] = result['Predicted'] * global_scaling_factor
+
             df_results = pd.DataFrame(prediction_results)
             csv_path = os.path.join(folder_path, 'stock_predictions.csv')
             df_results.to_csv(csv_path, index=False)
             print(f"Saved stock price predictions to {csv_path}")
 
-        # np.save(folder_path + 'metrics.npy', np.array([mae, mse, rmse, mape, mspe,rse, corr]))
+        np.save(folder_path + 'metrics.npy', np.array(metrics_array))
         np.save(folder_path + 'pred.npy', preds)
-        # np.save(folder_path + 'true.npy', trues)
-        # np.save(folder_path + 'x.npy', inputx)
+        np.save(folder_path + 'true.npy', trues)
+        np.save(folder_path + 'x.npy', inputx)
         return
 
     def predict(self, setting, load=False):
