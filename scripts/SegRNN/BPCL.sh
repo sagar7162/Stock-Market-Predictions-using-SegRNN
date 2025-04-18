@@ -25,12 +25,13 @@ win_len=48
 seq_len=720
 pred_len=96
 is_training=1  # Default is training mode
-do_predict
+skip_test=0    # Default is to run test phase
 
 # Parse command line arguments
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --is_training) is_training="$2"; shift 2;;
+    --skip_test) skip_test="$2"; shift 2;;
     --pred_len) pred_len="$2"; shift 2;;
     --seq_len) seq_len="$2"; shift 2;;
     --model) model_name="$2"; shift 2;;
@@ -38,15 +39,19 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
-echo "Running with is_training=$is_training, pred_len=$pred_len, seq_len=$seq_len"
+echo "Running with is_training=$is_training, skip_test=$skip_test, pred_len=$pred_len, seq_len=$seq_len"
+
+# Create the model_id string properly (without single quotes)
+full_model_id="${model_id_name}_${seq_len}_${pred_len}"
 
 # Use the parameters in the command
 python -u run_longExp.py \
   --is_training $is_training \
   --do_predict \
+  --skip_test $skip_test \
   --root_path $root_path_name \
   --data_path $data_path_name \
-  --model_id $model_id_name'_'$seq_len'_'$pred_len \
+  --model_id $full_model_id \
   --model $model_name \
   --data $data_name \
   --features $features \
@@ -68,5 +73,5 @@ python -u run_longExp.py \
 
 # If we're in test mode, display a helpful message
 if [ "$is_training" -eq 0 ]; then
-  echo "Testing completed. Results are available in: ./results/${model_id_name}_${seq_len}_${pred_len}_${model_name}_custom_ftMS_sl${seq_len}_pl${pred_len}_dm512_dr0.5_rt${rnn_type}_dw${dec_way}_sl${seg_len}_mae_test_0/"
+  echo "Processing completed. Results are available in: ./results/${full_model_id}_${model_name}_custom_ftMS_sl${seq_len}_pl${pred_len}_dm512_dr0.5_rt${rnn_type}_dw${dec_way}_sl${seg_len}_mae_test_0/"
 fi

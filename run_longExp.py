@@ -12,6 +12,7 @@ parser.add_argument('--random_seed', type=int, default=2024, help='random seed')
 
 # basic config
 parser.add_argument('--is_training', type=int, required=True, default=1, help='status')
+parser.add_argument('--skip_test', type=int, default=0, help='skip test phase and go directly to prediction')
 parser.add_argument('--model_id', type=str, required=True, default='test', help='model id')
 parser.add_argument('--model', type=str, required=True, default='Autoformer',
                     help='model name, options: [Autoformer, Informer, Transformer]')
@@ -167,6 +168,13 @@ else:
         args.des, ii)
 
     exp = Exp(args)  # set experiments
-    print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
-    exp.test(setting, test=1)
+    
+    if not args.skip_test:
+        print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
+        exp.test(setting, test=1)
+    
+    if args.do_predict:
+        print('>>>>>>>predicting : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
+        exp.predict(setting, True)
+        
     torch.cuda.empty_cache()
