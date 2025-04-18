@@ -52,3 +52,24 @@ mse:0.29055267572402954, mae:0.3907284140586853, ms/sample:3.111292116390252
 BPCL_720_96_SegRNN_custom_ftMS_sl720_pl96_dm512_dr0.5_rtrnn_dwpmf_sl48_mae_test_0  
 mse:0.29055267572402954, mae:0.3907284140586853, ms/sample:4.788958508035411
 
+BPCL_720_96_SegRNN_custom_ftMS_sl720_pl96_dm512_dr0.5_rtrnn_dwpmf_sl48_mae_test_0  
+mse:0.29055267572402954, mae:0.3907284140586853, ms/sample:2.352752547333206
+
+BPCL_720_96_SegRNN_custom_ftMS_sl720_pl96_dm512_dr0.5_rtrnn_dwpmf_sl48_mae_test_0  
+mse:0.29055267572402954, mae:0.3907284140586853, ms/sample:2.873562877963048
+
+BPCL_720_96_SegRNN_custom_ftMS_sl720_pl96_dm512_dr0.5_rtrnn_dwpmf_sl48_mae_test_0  
+mse:0.29055267572402954, mae:0.3907284140586853, ms/sample:4.098035040355864
+
+BPCL_720_96_SegRNN_custom_ftMS_sl720_pl96_dm512_dr0.5_rtrnn_dwpmf_sl48_mae_test_0  
+mse:0.29055267572402954, mae:0.3907284140586853, ms/sample:4.2087609723487995
+
+BPCL_720_96_SegRNN_custom_ftMS_sl720_pl96_dm512_dr0.5_rtrnn_dwpmf_sl48_mae_test_0  
+mse:0.29055267572402954, mae:0.3907284140586853, ms/sample:4.501931662391678
+
+BPCL_720_96_SegRNN_custom_ftMS_sl720_pl96_dm512_dr0.5_rtrnn_dwpmf_sl48_mae_test_0  
+mse:0.29055267572402954, mae:0.3907284140586853, ms/sample:4.039696531512969
+
+BPCL_720_96_SegRNN_custom_ftMS_sl720_pl96_dm512_dr0.5_rtrnn_dwpmf_sl48_mae_test_0  
+mse:0.29055267572402954, mae:0.3907284140586853, ms/sample:2.3083768275953966
+

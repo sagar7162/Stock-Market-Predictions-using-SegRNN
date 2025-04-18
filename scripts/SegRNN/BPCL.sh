@@ -1,3 +1,6 @@
+#!/bin/bash
+# BPCL script that accepts command-line parameters
+
 if [ ! -d "./logs" ]; then
     mkdir ./logs
 fi
@@ -6,49 +9,64 @@ if [ ! -d "./logs/LongForecasting" ]; then
     mkdir ./logs/LongForecasting
 fi
 
-root_path_name=./dataset/ #for --root_path
-data_path_name=BPCL.csv #for --data_path
+# Default parameter values
+root_path_name=./dataset/ 
+data_path_name=BPCL.csv
 model_id_name=BPCL
-data_name=custom #for --data
-features=MS #for --features
+data_name=custom
+features=MS
 target=Close
-freq=d #for --freq
+freq=d
 model_name=SegRNN
-
-
-#SegRNN
-rnn_type=rnn #for --rnn_type
-dec_way=pmf #for --dec_way
-seg_len=48 #for --seg_len
-win_len=48 #for --win_len
-
+rnn_type=rnn
+dec_way=pmf
+seg_len=48
+win_len=48
 seq_len=720
-for pred_len in 96
-do
-    python -u run_longExp.py \
-      --is_training 1 \
-      --do_predict \
-      --root_path $root_path_name \
-      --data_path $data_path_name \
-      --model_id $model_id_name'_'$seq_len'_'$pred_len \
-      --model $model_name \
-      --data $data_name \
-      --features $features \
-      --target $target \
-      --freq $freq \
-      --seq_len $seq_len \
-      --pred_len $pred_len \
-      --seg_len 48 \
-      --win_len $win_len \
-      --enc_in 9 \
-      --d_model 512 \
-      --dropout 0.5 \
-      --train_epochs 30 \
-      --patience 1 \
-      --rnn_type $rnn_type \
-      --dec_way pmf \
-      --channel_id 1 \
-      --itr 1 --batch_size 256 --learning_rate 0.001 > logs/LongForecasting/$model_name'_'$model_id_name'_'$seq_len'_'$pred_len.log
+pred_len=96
+is_training=1  # Default is training mode
+do_predict
+
+# Parse command line arguments
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --is_training) is_training="$2"; shift 2;;
+    --pred_len) pred_len="$2"; shift 2;;
+    --seq_len) seq_len="$2"; shift 2;;
+    --model) model_name="$2"; shift 2;;
+    *) echo "Unknown parameter passed: $1"; exit 1;;
+  esac
 done
 
-#"Date" nhi "date" rakhna h csv me 
+echo "Running with is_training=$is_training, pred_len=$pred_len, seq_len=$seq_len"
+
+# Use the parameters in the command
+python -u run_longExp.py \
+  --is_training $is_training \
+  --do_predict \
+  --root_path $root_path_name \
+  --data_path $data_path_name \
+  --model_id $model_id_name'_'$seq_len'_'$pred_len \
+  --model $model_name \
+  --data $data_name \
+  --features $features \
+  --target $target \
+  --freq $freq \
+  --seq_len $seq_len \
+  --pred_len $pred_len \
+  --seg_len $seg_len \
+  --win_len $win_len \
+  --enc_in 9 \
+  --d_model 512 \
+  --dropout 0.5 \
+  --train_epochs 30 \
+  --patience 1 \
+  --rnn_type $rnn_type \
+  --dec_way $dec_way \
+  --channel_id 1 \
+  --itr 1 --batch_size 256 --learning_rate 0.001 > logs/LongForecasting/$model_name'_'$model_id_name'_'$seq_len'_'$pred_len.log
+
+# If we're in test mode, display a helpful message
+if [ "$is_training" -eq 0 ]; then
+  echo "Testing completed. Results are available in: ./results/${model_id_name}_${seq_len}_${pred_len}_${model_name}_custom_ftMS_sl${seq_len}_pl${pred_len}_dm512_dr0.5_rt${rnn_type}_dw${dec_way}_sl${seg_len}_mae_test_0/"
+fi
