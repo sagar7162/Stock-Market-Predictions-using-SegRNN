@@ -62,6 +62,10 @@
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
         transition: box-shadow 0.2s;
         position: relative;
+        height: 220px; /* Set fixed height for all cards */
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
       }
       .stats-card:hover {
         box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1);
@@ -204,12 +208,20 @@
                   </div>
                 </div>
                 <div class="col-md-3">
-                  <button class="btn btn-success w-100" id="trainModelBtn" style="margin-top: 30px;">
+                  <button
+                    class="btn btn-success w-100"
+                    id="trainModelBtn"
+                    style="margin-top: 30px"
+                  >
                     Train Model
                   </button>
                 </div>
                 <div class="col-md-3">
-                  <div id="modelStatus" class="model-status not-trained" style="margin-top: 30px;">
+                  <div
+                    id="modelStatus"
+                    class="model-status not-trained"
+                    style="margin-top: 30px"
+                  >
                     Model not trained yet
                   </div>
                 </div>
@@ -231,11 +243,9 @@
                     <label for="predictionDate" class="form-label"
                       >Target Date for Prediction:</label
                     >
-                    <input
-                      type="date"
-                      class="form-control"
-                      id="predictionDate"
-                    />
+                    <select class="form-select" id="predictionDate" disabled>
+                      <option value="">Select a date</option>
+                    </select>
                     <small class="form-text text-muted"
                       >Select a date from the prediction results</small
                     >
@@ -244,7 +254,7 @@
                 <div class="col-md-6">
                   <button
                     class="btn btn-primary w-100"
-                    style="margin-top: 10px;"
+                    style="margin-top: 10px"
                     id="makePredictionBtn"
                     disabled
                   >
@@ -259,7 +269,7 @@
 
       <!-- Stats Cards -->
       <div class="row mb-4" id="prediction-cards" style="display: none">
-        <div class="col-md-4">
+        <div class="col-md-6">
           <div class="card stats-card">
             <div class="stats-icon">
               <span class="bi bi-graph-up-arrow"></span>
@@ -273,7 +283,7 @@
             </div>
           </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-6">
           <div class="card stats-card">
             <div class="stats-icon">
               <span class="bi bi-arrow-up-right-circle"></span>
@@ -282,25 +292,6 @@
               <h5 class="stats-label">Price Change</h5>
               <div class="stats-value" id="price-change">--</div>
               <div class="stats-label" id="price-change-percent">--</div>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-4">
-          <div class="card stats-card">
-            <div class="stats-icon">
-              <span class="bi bi-shield-check"></span>
-            </div>
-            <div class="card-body">
-              <h5 class="stats-label">Confidence Level</h5>
-              <div class="stats-value" id="confidence-level">--</div>
-              <div class="progress mt-2">
-                <div
-                  id="confidence-bar"
-                  class="progress-bar bg-success"
-                  role="progressbar"
-                  style="width: 0%"
-                ></div>
-              </div>
             </div>
           </div>
         </div>
@@ -352,6 +343,8 @@
         // Train model
         function trainModel() {
           const stock = stockSelect.value;
+          console.log(`Training model for stock: ${stock}`);
+
           modelStatus.style.display = "block";
           modelStatus.className = "model-status";
           modelStatus.textContent = "Training in progress...";
@@ -365,6 +358,7 @@
             `Training model for ${stock}... This may take a few minutes.`
           );
 
+          console.log("Sending fetch request to /train_model");
           fetch("/train_model", {
             method: "POST",
             headers: {
@@ -374,9 +368,17 @@
               stock: stock,
             }),
           })
-            .then((response) => response.json())
+            .then((response) => {
+              console.log("Received response:", response);
+              if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+              }
+              return response.json();
+            })
             .then((data) => {
+              console.log("Response data:", data);
               if (data.status === "error") {
+                console.error("Training error:", data.message);
                 showNotification(
                   `Error training model: ${data.message}`,
                   "danger"
@@ -386,20 +388,29 @@
                 return;
               }
 
+              console.log("Training successful");
               showNotification("Model trained successfully!", "success");
               trainedModels[stock] = true;
               modelStatus.className = "model-status trained";
               modelStatus.textContent = "Model trained and ready";
-              makePredictionBtn.disabled = false;
+
+              // Immediately fetch available dates after training
+              fetchPredictionDates(stock);
+
+              // Enable the prediction button only after dates are loaded
             })
             .catch((error) => {
               console.error("Error training model:", error);
-              showNotification("Failed to train model", "danger");
+              showNotification(
+                "Failed to train model: " + error.message,
+                "danger"
+              );
               modelStatus.className = "model-status not-trained";
               modelStatus.textContent = "Model training failed";
             })
             .finally(() => {
               trainModelBtn.disabled = false;
+              console.log("Training process completed");
             });
         }
 
@@ -447,24 +458,44 @@
               const priceChangePercent = document.getElementById(
                 "price-change-percent"
               );
-              const confidenceLevel =
-                document.getElementById("confidence-level");
-              const confidenceBar = document.getElementById("confidence-bar");
 
               if (data.prediction) {
                 predictionCards.style.display = "flex";
-                predictedPrice.textContent = data.prediction.price || "--";
+                // Replace $ with ₹ in price values
+                let priceText = data.prediction.price || "--";
+                if (priceText !== "--" && !priceText.includes("₹")) {
+                  // If it contains a $ sign, replace it with ₹
+                  priceText = priceText.replace("$", "₹");
+                  // If there's no currency symbol, add ₹
+                  if (!priceText.includes("₹")) {
+                    priceText = "₹" + priceText;
+                  }
+                }
+                predictedPrice.textContent = priceText;
                 predictedDate.textContent = data.prediction.date || "--";
 
                 // Set color for price change based on direction
-                if (
-                  data.prediction.change &&
-                  data.prediction.change.includes("-")
-                ) {
-                  priceChange.textContent = data.prediction.change;
+                let changeText = data.prediction.change || "--";
+                if (changeText !== "--") {
+                  // Replace $ with ₹ in change value
+                  changeText = changeText.replace("$", "₹");
+                  if (
+                    !changeText.includes("₹") &&
+                    !changeText.startsWith("-₹")
+                  ) {
+                    if (changeText.startsWith("-")) {
+                      changeText = "-₹" + changeText.substring(1);
+                    } else {
+                      changeText = "₹" + changeText;
+                    }
+                  }
+                }
+
+                if (changeText.includes("-")) {
+                  priceChange.textContent = changeText;
                   priceChange.style.color = "#dc3545"; // Bootstrap danger red
                 } else {
-                  priceChange.textContent = data.prediction.change;
+                  priceChange.textContent = changeText;
                   priceChange.style.color = "#28a745"; // Bootstrap success green
                 }
 
@@ -480,20 +511,6 @@
                   priceChangePercent.textContent =
                     data.prediction.change_percent;
                   priceChangePercent.style.color = "#28a745"; // Bootstrap success green
-                }
-
-                // Update confidence level
-                const confidencePct = data.prediction.confidence || 0;
-                confidenceLevel.textContent = `${confidencePct}%`;
-                confidenceBar.style.width = `${confidencePct}%`;
-
-                // Change confidence bar color based on level
-                if (confidencePct >= 80) {
-                  confidenceBar.className = "progress-bar bg-success";
-                } else if (confidencePct >= 60) {
-                  confidenceBar.className = "progress-bar bg-info";
-                } else {
-                  confidenceBar.className = "progress-bar bg-warning";
                 }
               } else {
                 predictionCards.style.display = "none";
@@ -518,6 +535,9 @@
             modelStatus.className = "model-status trained";
             modelStatus.textContent = "Model trained and ready";
             makePredictionBtn.disabled = false;
+
+            // Fetch available prediction dates for this stock
+            fetchPredictionDates(stock);
             return;
           }
 
@@ -526,6 +546,69 @@
           modelStatus.className = "model-status not-trained";
           modelStatus.textContent = "Model not trained yet";
           makePredictionBtn.disabled = true;
+        }
+
+        // Fetch available prediction dates
+        function fetchPredictionDates(stock) {
+          console.log(`Fetching prediction dates for ${stock}...`);
+          fetch(`/stock_data?stock=${stock}`)
+            .then((response) => {
+              console.log("Received response from /stock_data:", response);
+              return response.json();
+            })
+            .then((data) => {
+              console.log("Date range data received:", data);
+              if (
+                data.date_range &&
+                data.date_range.dates &&
+                data.date_range.dates.length > 0
+              ) {
+                console.log(
+                  `Found ${data.date_range.dates.length} dates for ${stock}`
+                );
+
+                // Populate the date picker with available dates
+                const predictionDate =
+                  document.getElementById("predictionDate");
+                predictionDate.innerHTML =
+                  '<option value="">Select a date</option>';
+
+                data.date_range.dates.forEach((date) => {
+                  console.log(`Adding date option: ${date}`);
+                  const option = document.createElement("option");
+                  option.value = date;
+                  option.textContent = date;
+                  predictionDate.appendChild(option);
+                });
+
+                // Enable the date select dropdown
+                predictionDate.disabled = false;
+                console.log("Date picker enabled with options");
+
+                // Select the first date by default
+                if (predictionDate.options.length > 1) {
+                  predictionDate.selectedIndex = 1;
+                  // Enable prediction button when a date is automatically selected
+                  makePredictionBtn.disabled = false;
+                }
+
+                // Add event listener to update prediction button state
+                predictionDate.addEventListener("change", function () {
+                  makePredictionBtn.disabled = !this.value;
+                });
+              } else {
+                console.warn("No dates found in the prediction results");
+                // Handle the case when no dates are available
+                showNotification(
+                  "No prediction dates available for this stock. Please check the prediction file.",
+                  "warning"
+                );
+              }
+            })
+            .catch((error) => {
+              console.error("Error fetching prediction dates:", error);
+              showNotification("Failed to fetch prediction dates", "danger");
+            });
         }
 
         // Event listeners

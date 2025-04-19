@@ -163,6 +163,14 @@ For batch processing or automated workflows, use the provided shell scripts:
    python run_longExp.py --is_training 1 --model SegRNN --data custom --data_path STOCKNAME.csv --seq_len 720 --pred_len 96 --model_id STOCKNAME_720_96
    ```
 
+## Datasets
+
+Two CSV files are already provided in the dataset/ directory for illustrative purposes. You are welcome to add more CSV files to this folder, provided they adhere to the correct format described below.
+
+You can download the dataset from the following link:
+
+https://www.kaggle.com/datasets/rohanrao/nifty50-stock-market-data
+
 ## Data Format
 
 The system requires stock data in CSV format with the following columns:
@@ -172,7 +180,6 @@ The system requires stock data in CSV format with the following columns:
 - High: Highest price during the day
 - Low: Lowest price during the day
 - Close: Closing price (target for prediction)
-- Volume: Trading volume
 
 CSV files should be named as `STOCKNAME.csv` and placed in the `dataset/` directory.
 

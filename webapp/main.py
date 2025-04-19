@@ -65,18 +65,16 @@ def get_prediction_results(stock):
 # Get date range from prediction results
 def get_prediction_date_range(stock):
     predictions_df = get_prediction_results(stock)
-    if predictions_df is not None and 'Date' in predictions_df.columns:
-        predictions_df['Date'] = pd.to_datetime(predictions_df['Date'])
-        return {
-            'start': predictions_df['Date'].min().strftime('%Y-%m-%d'),
-            'end': predictions_df['Date'].max().strftime('%Y-%m-%d')
-        }
-    elif predictions_df is not None and 'date' in predictions_df.columns:
-        predictions_df['date'] = pd.to_datetime(predictions_df['date'])
-        return {
-            'start': predictions_df['date'].min().strftime('%Y-%m-%d'),
-            'end': predictions_df['date'].max().strftime('%Y-%m-%d')
-        }
+    if predictions_df is not None:
+        date_col = 'Date' if 'Date' in predictions_df.columns else 'date'
+        if date_col in predictions_df.columns:
+            predictions_df[date_col] = pd.to_datetime(predictions_df[date_col])
+            dates_list = predictions_df[date_col].dt.strftime('%Y-%m-%d').tolist()
+            return {
+                'start': predictions_df[date_col].min().strftime('%Y-%m-%d'),
+                'end': predictions_df[date_col].max().strftime('%Y-%m-%d'),
+                'dates': dates_list
+            }
     return None
 
 # Read stock data
@@ -163,7 +161,8 @@ def stock_data():
     return jsonify({
         'date_range': date_range if date_range else {
             'start': df['date'].iloc[0].strftime('%Y-%m-%d') if 'date' in df.columns else 'N/A',
-            'end': df['date'].iloc[-1].strftime('%Y-%m-%d') if 'date' in df.columns else 'N/A'
+            'end': df['date'].iloc[-1].strftime('%Y-%m-%d') if 'date' in df.columns else 'N/A',
+            'dates': []
         }
     })
 
@@ -172,8 +171,11 @@ def train_model():
     data = request.json
     stock = data.get('stock', 'AXISBANK')
     
+    print(f"Training model for stock: {stock}")
+    
     # Check if model is already trained for this stock
     if stock in MODEL_TRAINED and MODEL_TRAINED[stock]:
+        print(f"Model for {stock} already trained. Returning success.")
         return jsonify({
             'status': 'success',
             'message': f'Model for {stock} already trained. Ready for predictions.'
@@ -182,13 +184,22 @@ def train_model():
     try:
         # Get the absolute path to the DC directory
         dc_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        print(f"DC directory: {dc_dir}")
         
-        # Use the stock_predict.sh script for training
+        # Check if script exists
         script_path = os.path.join(dc_dir, 'scripts', 'SegRNN', 'stock_predict.sh')
+        print(f"Script path: {script_path}")
+        print(f"Script exists: {os.path.exists(script_path)}")
         
         # Run the script with training mode from the DC root directory
         command = f"cd {dc_dir} && sh scripts/SegRNN/stock_predict.sh --stock {stock} --is_training 1"
+        print(f"Running command: {command}")
+        
         result = subprocess.run(command, shell=True, capture_output=True, text=True)
+        
+        print(f"Command return code: {result.returncode}")
+        print(f"Command stdout: {result.stdout}")
+        print(f"Command stderr: {result.stderr}")
         
         if result.returncode != 0:
             print(f"Error in training: {result.stderr}")
@@ -196,6 +207,7 @@ def train_model():
         
         # Mark as trained
         MODEL_TRAINED[stock] = True
+        print(f"Model for {stock} marked as trained successfully")
         
         return jsonify({
             'status': 'success',
@@ -203,6 +215,8 @@ def train_model():
         })
     except Exception as e:
         print(f"Exception during training: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'status': 'error', 'message': str(e)})
 
 @app.route('/make_prediction', methods=['POST'])
@@ -299,10 +313,6 @@ def make_prediction():
         price_change = round(prediction_value - prev_value, 2)
         price_change_pct = round((price_change / prev_value) * 100, 2)
     
-    # Generate a confidence level (this would normally come from the model)
-    # For demo purposes, generate a random confidence between 70-95%
-    confidence_level = round(np.random.uniform(70, 95), 1)
-    
     # Create prediction chart using data from future_predictions.csv
     fig = go.Figure()
     
@@ -325,13 +335,12 @@ def make_prediction():
     
     graph_json = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
     
-    # Create prediction data for cards
+    # Create prediction data for cards (without confidence level)
     prediction_data = {
         'date': target_date.strftime('%Y-%m-%d'),
         'price': f"${prediction_value:.2f}",
         'change': f"${price_change:.2f}",
-        'change_percent': f"{price_change_pct:.2f}%",
-        'confidence': confidence_level
+        'change_percent': f"{price_change_pct:.2f}%"
     }
     
     return jsonify({
