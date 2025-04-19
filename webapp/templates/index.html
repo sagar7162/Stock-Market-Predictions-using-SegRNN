@@ -9,61 +9,98 @@
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css"
       rel="stylesheet"
     />
-    <!-- Plotly.js -->
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <!-- Bootstrap Icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
+    />
     <style>
       body {
-        padding-top: 20px;
-        background-color: #f5f5f5;
+        padding-top: 0px;
+        background: linear-gradient(120deg, #f5f7fa 0%, #c3cfe2 100%);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
       }
+      .container {
+        flex: 1 0 auto;
+      }
+
       .card {
-        margin-bottom: 20px;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        margin-bottom: 30px;
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
+        border-radius: 18px;
+        border: none;
+        transition: box-shadow 0.2s;
+      }
+      .card:hover {
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.13);
       }
       .card-header {
-        background-color: #007bff;
+        background: linear-gradient(90deg, #000000 60%, #79028b 100%);
         color: white;
         font-weight: bold;
+        border-radius: 18px 18px 0 0;
+        font-size: 1.15rem;
+        letter-spacing: 0.5px;
       }
-      .btn-primary {
-        background-color: #007bff;
+      .btn-primary,
+      .btn-success {
+        transition: background 0.2s, box-shadow 0.2s;
+        box-shadow: 0 2px 8px rgba(0, 123, 255, 0.08);
       }
-      .loading {
-        display: none;
-        text-align: center;
-        padding: 20px;
-      }
-      .loading-spinner {
-        width: 3rem;
-        height: 3rem;
-      }
-      #notification {
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        z-index: 1000;
-        display: none;
+      .btn-primary:hover,
+      .btn-success:hover {
+        background: #0056b3;
+        box-shadow: 0 4px 16px rgba(0, 123, 255, 0.18);
       }
       .stats-card {
         text-align: center;
-        padding: 15px;
+        padding: 22px 10px 18px 10px;
+        border-radius: 16px;
+        background: #fff;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        transition: box-shadow 0.2s;
+        position: relative;
+      }
+      .stats-card:hover {
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1);
       }
       .stats-value {
-        font-size: 24px;
+        font-size: 2.1rem;
         font-weight: bold;
+        margin-bottom: 0.2rem;
       }
       .stats-label {
         color: #6c757d;
+        font-size: 1.1rem;
+        margin-bottom: 0.5rem;
+      }
+      .stats-icon {
+        font-size: 2.2rem;
+        margin-bottom: 0.3rem;
+        color: #b015ae;
+      }
+      .progress {
+        height: 10px;
+        border-radius: 5px;
       }
       .navbar-brand {
+        top: 0%;
         font-weight: bold;
-        font-size: 1.5rem;
+        font-size: 2rem;
+        letter-spacing: 1px;
+      }
+      /* Custom navbar background */
+      .navbar {
+        background: linear-gradient(90deg, #000000, #878787) !important;
       }
       .model-status {
         padding: 10px;
         border-radius: 5px;
         margin-top: 10px;
         display: none;
+        font-size: 1rem;
       }
       .model-status.trained {
         background-color: #d4edda;
@@ -73,11 +110,45 @@
         background-color: #f8d7da;
         color: #721c24;
       }
+      #notification {
+        position: fixed;
+        top: 30px;
+        right: 30px;
+        z-index: 2000;
+        display: none;
+        min-width: 320px;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.13);
+        border-radius: 10px;
+        font-size: 1.1rem;
+      }
+      .toast-body {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .footer {
+        flex-shrink: 0;
+        background: #000000;
+        border-top: 1px solid #e3e3e3;
+        padding: 10px 0 0px 0;
+        color: #ffffff;
+        font-size: 1.1rem;
+        text-align: center;
+        margin-top: 20px;
+      }
+      @media (max-width: 767px) {
+        .stats-value {
+          font-size: 1.3rem;
+        }
+        .navbar-brand {
+          font-size: 1.2rem;
+        }
+      }
     </style>
   </head>
   <body>
     <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+    <nav class="navbar navbar-expand-lg navbar-dark mb-4">
       <div class="container">
         <a class="navbar-brand" href="#">Stock Price Forecasting Dashboard</a>
       </div>
@@ -102,7 +173,7 @@
       >
         <div class="d-flex">
           <div class="toast-body" id="notification-message">
-            Notification message here.
+            <span class="bi bi-info-circle"></span> Notification message here.
           </div>
           <button
             type="button"
@@ -119,9 +190,9 @@
           <div class="card">
             <div class="card-header">Stock Selection & Training</div>
             <div class="card-body">
-              <div class="row">
+              <div class="row align-items-center">
                 <div class="col-md-6">
-                  <div class="form-group mb-3">
+                  <div class="form-group mb-0">
                     <label for="stockSelect" class="form-label"
                       >Select Stock:</label
                     >
@@ -132,11 +203,13 @@
                     </select>
                   </div>
                 </div>
-                <div class="col-md-6 d-flex align-items-end">
-                  <button class="btn btn-success me-2" id="trainModelBtn">
+                <div class="col-md-3">
+                  <button class="btn btn-success w-100" id="trainModelBtn" style="margin-top: 30px;">
                     Train Model
                   </button>
-                  <div id="modelStatus" class="model-status not-trained">
+                </div>
+                <div class="col-md-3">
+                  <div id="modelStatus" class="model-status not-trained" style="margin-top: 30px;">
                     Model not trained yet
                   </div>
                 </div>
@@ -152,9 +225,9 @@
           <div class="card">
             <div class="card-header">Prediction Selection</div>
             <div class="card-body">
-              <div class="row">
+              <div class="row align-items-center">
                 <div class="col-md-6">
-                  <div class="form-group mb-3">
+                  <div class="form-group mb-0">
                     <label for="predictionDate" class="form-label"
                       >Target Date for Prediction:</label
                     >
@@ -168,9 +241,10 @@
                     >
                   </div>
                 </div>
-                <div class="col-md-6 d-flex align-items-end">
+                <div class="col-md-6">
                   <button
                     class="btn btn-primary w-100"
+                    style="margin-top: 10px;"
                     id="makePredictionBtn"
                     disabled
                   >
@@ -184,56 +258,60 @@
       </div>
 
       <!-- Stats Cards -->
-      <div class="row mb-4">
-        <!-- Remove the Predicted Price tile as requested -->
-      </div>
-
-      <!-- Chart Panels -->
-      <div class="row">
-        <!-- Historical Data Chart -->
-        <div class="col-md-6">
-          <div class="card">
-            <div class="card-header">Historical Stock Price</div>
+      <div class="row mb-4" id="prediction-cards" style="display: none">
+        <div class="col-md-4">
+          <div class="card stats-card">
+            <div class="stats-icon">
+              <span class="bi bi-graph-up-arrow"></span>
+            </div>
             <div class="card-body">
-              <div id="historicalChartLoading" class="loading">
-                <div
-                  class="spinner-border loading-spinner text-primary"
-                  role="status"
-                >
-                  <span class="visually-hidden">Loading...</span>
-                </div>
-                <div>Loading historical data...</div>
+              <h5 class="stats-label">Predicted Price</h5>
+              <div class="stats-value" id="predicted-price">--</div>
+              <div class="stats-label">
+                on <span id="predicted-date"></span>
               </div>
-              <div id="historicalChart" style="height: 400px"></div>
             </div>
           </div>
         </div>
-
-        <!-- Prediction Chart -->
-        <div class="col-md-6">
-          <div class="card">
-            <div class="card-header">Price Prediction with SegRNN</div>
+        <div class="col-md-4">
+          <div class="card stats-card">
+            <div class="stats-icon">
+              <span class="bi bi-arrow-up-right-circle"></span>
+            </div>
             <div class="card-body">
-              <div id="predictionChartLoading" class="loading">
+              <h5 class="stats-label">Price Change</h5>
+              <div class="stats-value" id="price-change">--</div>
+              <div class="stats-label" id="price-change-percent">--</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card stats-card">
+            <div class="stats-icon">
+              <span class="bi bi-shield-check"></span>
+            </div>
+            <div class="card-body">
+              <h5 class="stats-label">Confidence Level</h5>
+              <div class="stats-value" id="confidence-level">--</div>
+              <div class="progress mt-2">
                 <div
-                  class="spinner-border loading-spinner text-primary"
-                  role="status"
-                >
-                  <span class="visually-hidden">Loading...</span>
-                </div>
-                <div>Loading predictions...</div>
+                  id="confidence-bar"
+                  class="progress-bar bg-success"
+                  role="progressbar"
+                  style="width: 0%"
+                ></div>
               </div>
-              <div id="predictionChart" style="height: 400px"></div>
             </div>
           </div>
         </div>
       </div>
-
-      <!-- Footer -->
-      <footer class="mt-5 mb-3 text-muted text-center">
-        <p>&copy; 2025 Stock Price Forecasting with SegRNN</p>
-      </footer>
     </div>
+    <!-- end container -->
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>&copy; 2025 Stock Price Forecasting with SegRNN</p>
+    </footer>
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
@@ -247,15 +325,6 @@
         const trainModelBtn = document.getElementById("trainModelBtn");
         const makePredictionBtn = document.getElementById("makePredictionBtn");
         const modelStatus = document.getElementById("modelStatus");
-        const historicalChart = document.getElementById("historicalChart");
-        const predictionChart = document.getElementById("predictionChart");
-        const historicalChartLoading = document.getElementById(
-          "historicalChartLoading"
-        );
-        const predictionChartLoading = document.getElementById(
-          "predictionChartLoading"
-        );
-        // Remove references to elements that no longer exist
         const notification = document.getElementById("notification");
         const notificationMessage = document.getElementById(
           "notification-message"
@@ -272,69 +341,12 @@
             "bg-danger"
           );
           notification.classList.add(`bg-${type}`);
-          notificationMessage.textContent = message;
+          notificationMessage.innerHTML = `<span class="bi bi-info-circle"></span> ${message}`;
           notification.style.display = "block";
 
           setTimeout(() => {
             notification.style.display = "none";
           }, 5000);
-        }
-
-        // Load stock data
-        function loadStockData() {
-          const stock = stockSelect.value;
-          historicalChartLoading.style.display = "block";
-
-          fetch(`/stock_data?stock=${stock}`)
-            .then((response) => response.json())
-            .then((data) => {
-              if (data.error) {
-                showNotification(
-                  `Error loading stock data: ${data.error}`,
-                  "danger"
-                );
-                return;
-              }
-
-              const chartData = JSON.parse(data.graph);
-              Plotly.newPlot(
-                "historicalChart",
-                chartData.data,
-                chartData.layout
-              );
-
-              // Update prediction date min/max based on available data
-              if (
-                data.date_range &&
-                data.date_range.start &&
-                data.date_range.end
-              ) {
-                const startDate = new Date(data.date_range.start);
-                const endDate = new Date(data.date_range.end);
-
-                // Set the min date to 30 days after start (to account for training data needs)
-                const minDate = new Date(startDate);
-                minDate.setDate(minDate.getDate() + 30);
-
-                predictionDate.min = minDate.toISOString().split("T")[0];
-                predictionDate.max = endDate.toISOString().split("T")[0];
-
-                // Set default to something in the middle of the range
-                const defaultDate = new Date(endDate);
-                defaultDate.setDate(
-                  defaultDate.getDate() -
-                    Math.floor((endDate - minDate) / 2 / (1000 * 60 * 60 * 24))
-                );
-                predictionDate.value = defaultDate.toISOString().split("T")[0];
-              }
-            })
-            .catch((error) => {
-              console.error("Error loading stock data:", error);
-              showNotification("Failed to load stock data", "danger");
-            })
-            .finally(() => {
-              historicalChartLoading.style.display = "none";
-            });
         }
 
         // Train model
@@ -395,12 +407,13 @@
         function makePrediction() {
           const stock = stockSelect.value;
           const date = predictionDate.value;
-          predictionChartLoading.style.display = "block";
-          predictionChart.innerHTML = "";
           makePredictionBtn.disabled = true;
 
+          // Hide prediction cards initially
+          document.getElementById("prediction-cards").style.display = "none";
+
           showNotification(
-            `Generating predictions around ${date}... This may take a moment.`
+            `Generating predictions for ${date}... This may take a moment.`
           );
 
           fetch("/make_prediction", {
@@ -420,52 +433,77 @@
                   `Error making prediction: ${data.message}`,
                   "danger"
                 );
-                predictionChart.innerHTML = `<div class="text-center mt-5">${data.message}</div>`;
                 return;
               }
 
               showNotification("Prediction generated successfully!", "success");
 
-              // Load the prediction chart
-              const chartData = JSON.parse(data.graph);
-              Plotly.newPlot(
-                "predictionChart",
-                chartData.data,
-                chartData.layout
+              // Update prediction cards
+              const predictionCards =
+                document.getElementById("prediction-cards");
+              const predictedPrice = document.getElementById("predicted-price");
+              const predictedDate = document.getElementById("predicted-date");
+              const priceChange = document.getElementById("price-change");
+              const priceChangePercent = document.getElementById(
+                "price-change-percent"
               );
+              const confidenceLevel =
+                document.getElementById("confidence-level");
+              const confidenceBar = document.getElementById("confidence-bar");
 
-              // Show first predicted value
-              if (chartData.data && chartData.data.length > 0) {
-                // For charts with both Actual and Predicted
+              if (data.prediction) {
+                predictionCards.style.display = "flex";
+                predictedPrice.textContent = data.prediction.price || "--";
+                predictedDate.textContent = data.prediction.date || "--";
+
+                // Set color for price change based on direction
                 if (
-                  chartData.data.length > 1 &&
-                  chartData.data[1] &&
-                  chartData.data[1].y
+                  data.prediction.change &&
+                  data.prediction.change.includes("-")
                 ) {
-                  // Restrict predictionDate to available dates in the prediction CSV
-                  const availableDates = chartData.data[1].x;
-                  predictionDate.min = availableDates[0];
-                  predictionDate.max =
-                    availableDates[availableDates.length - 1];
+                  priceChange.textContent = data.prediction.change;
+                  priceChange.style.color = "#dc3545"; // Bootstrap danger red
+                } else {
+                  priceChange.textContent = data.prediction.change;
+                  priceChange.style.color = "#28a745"; // Bootstrap success green
                 }
-                // For charts with only Predicted
-                else if (chartData.data[0] && chartData.data[0].y) {
-                  // Restrict predictionDate to available dates in the prediction CSV
-                  const availableDates = chartData.data[0].x;
-                  predictionDate.min = availableDates[0];
-                  predictionDate.max =
-                    availableDates[availableDates.length - 1];
+
+                // Set color for percentage change
+                if (
+                  data.prediction.change_percent &&
+                  data.prediction.change_percent.includes("-")
+                ) {
+                  priceChangePercent.textContent =
+                    data.prediction.change_percent;
+                  priceChangePercent.style.color = "#dc3545"; // Bootstrap danger red
+                } else {
+                  priceChangePercent.textContent =
+                    data.prediction.change_percent;
+                  priceChangePercent.style.color = "#28a745"; // Bootstrap success green
                 }
+
+                // Update confidence level
+                const confidencePct = data.prediction.confidence || 0;
+                confidenceLevel.textContent = `${confidencePct}%`;
+                confidenceBar.style.width = `${confidencePct}%`;
+
+                // Change confidence bar color based on level
+                if (confidencePct >= 80) {
+                  confidenceBar.className = "progress-bar bg-success";
+                } else if (confidencePct >= 60) {
+                  confidenceBar.className = "progress-bar bg-info";
+                } else {
+                  confidenceBar.className = "progress-bar bg-warning";
+                }
+              } else {
+                predictionCards.style.display = "none";
               }
             })
             .catch((error) => {
               console.error("Error making prediction:", error);
               showNotification("Failed to make prediction", "danger");
-              predictionChart.innerHTML =
-                '<div class="text-center mt-5">Error generating predictions.</div>';
             })
             .finally(() => {
-              predictionChartLoading.style.display = "none";
               makePredictionBtn.disabled = false;
             });
         }
@@ -492,20 +530,14 @@
 
         // Event listeners
         stockSelect.addEventListener("change", () => {
-          loadStockData();
           checkModelStatus();
-          predictionChart.innerHTML =
-            '<div class="text-center mt-5">Select a date and click "Make Prediction" to generate predictions.</div>';
         });
 
         trainModelBtn.addEventListener("click", trainModel);
         makePredictionBtn.addEventListener("click", makePrediction);
 
         // Initial load
-        loadStockData();
         checkModelStatus();
-        predictionChart.innerHTML =
-          '<div class="text-center mt-5">Train the model first, then select a date to make predictions.</div>';
       });
     </script>
   </body>

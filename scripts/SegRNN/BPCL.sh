@@ -44,6 +44,11 @@ echo "Running with is_training=$is_training, skip_test=$skip_test, pred_len=$pre
 # Create the model_id string properly (without single quotes)
 full_model_id="${model_id_name}_${seq_len}_${pred_len}"
 
+# After preprocessing, we have 4 input features and will predict 1 output feature (Close)
+enc_in=5
+dec_in=5
+c_out=1
+
 # Use the parameters in the command
 python -u run_longExp.py \
   --is_training $is_training \
@@ -61,7 +66,9 @@ python -u run_longExp.py \
   --pred_len $pred_len \
   --seg_len $seg_len \
   --win_len $win_len \
-  --enc_in 9 \
+  --enc_in $enc_in \
+  --dec_in $dec_in \
+  --c_out $c_out \
   --d_model 512 \
   --dropout 0.5 \
   --train_epochs 30 \
