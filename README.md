@@ -5,6 +5,7 @@ This project implements a time series forecasting system for stock price predict
 ## Table of Contents
 
 - [Overview](#overview)
+- [System Architecture](#system-architecture)
 - [Project Structure](#project-structure)
 - [Model Architecture](#model-architecture)
 - [Installation](#installation)
@@ -29,6 +30,10 @@ Stock Price Forecasting with SegRNN is designed to predict future stock prices b
 - Flexible training parameters and configuration
 - Real-time prediction and visualization
 - Comparative analysis with historical data
+
+## Illustration
+
+![Stock Price Forecasting](illustration.png)
 
 ## Project Structure
 
