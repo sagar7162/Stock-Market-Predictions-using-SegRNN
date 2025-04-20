@@ -23,6 +23,12 @@ This project implements a time series forecasting system for stock price predict
 
 Stock Price Forecasting with SegRNN is designed to predict future stock prices based on historical data using advanced neural network techniques. The project leverages a novel segment-based approach to time series forecasting that divides input sequences into smaller segments for more effective temporal processing.
 
+![Linux Only](https://img.shields.io/badge/OS-Linux--only-red?logo=linux)
+
+> ❗ **Note:** This project currently runs **only on Linux systems**.
+
+
+
 **Key Features:**
 
 - Interactive web dashboard for stock selection and prediction visualization
